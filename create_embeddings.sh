@@ -1,12 +1,12 @@
 #!/bin/bash
 
-WORD_FILE=data/moves.txt
-OUT_DIR=data/embeddings/3
+WORD_FILE=data/train_moves.txt
+OUT_DIR=data/embeddings/5
 
 MIN_COUNT=5
 WINDOW_SIZE=15
-DIMENSIONS=( 10 25 50 100 200 )
-ITERATIONS=100
+DIMENSIONS=( 10 25 50 100 200 300 )
+ITERATIONS=200
 
 mkdir -p $OUT_DIR/
 
