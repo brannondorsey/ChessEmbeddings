@@ -4,6 +4,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout
 from keras.optimizers import Adam, SGD, RMSprop
 from keras.callbacks import ModelCheckpoint
+import matplotlib.pyplot as plt
 
 def build_word_vector_matrix(vector_file, n_words=None):
     '''Read a GloVe array from sys.argv[1] and return its vectors and labels as arrays
@@ -26,20 +27,145 @@ def build_word_vector_matrix(vector_file, n_words=None):
     word_to_id = dict((v,k) for k,v in id_to_word.items())
     return embeddings, labels, id_to_word, word_to_id
 
-def move_to_glove(move, embeddings, word_to_id):
-    if move in word_to_id:
-        return embeddings[word_to_id[move]]
-    else :
-        # return the "I've never seen that" vector
-        return np.full(len(embeddings[0]), 1, dtype=np.float32) 
+def plot_model_results(history, save_dir):
+    
+    plt.rcParams["figure.figsize"] = (12, 8)
+    
+    plt.title('Accuracy')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy')
+    plt.plot(history.history['acc'], label='acc')
+    plt.plot(history.history['val_acc'], label='val_acc')
+    plt.legend()
+    plt.show()
+    
+    argmax = np.argmax(history.history['val_acc']) 
+    mess = 'Highest val_acc at epoch {} with value of {:.3f}'
+    print(mess.format(argmax + 1, history.history['val_acc'][argmax]))
+    
+    plt.title('Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.plot(history.history['loss'], label='loss')
+    plt.plot(history.history['val_loss'], label='val_loss')
+    plt.legend()
+    plt.show()
+    
+    mess = 'Lowest val_loss at epoch {} with value of {:.2f}'
+    argmin = np.argmin(history.history['val_loss'])
+    print(mess.format(argmin + 1, history.history['val_loss'][argmin]))
+        
+def load_data(file, 
+              embeddings,
+              move_to_id_dict,
+              split=(0.7, 0.15, 0.15), 
+              embeddings_dir='../data/embeddings/5', 
+              dimensions=50):
 
-def encode_moves(moves, length):   
-    encoded = [move_to_glove(m) for m in moves]
-    while len(encoded) < length:
-        encoded.append(np.zeros(length))
-    return encoded
+    def test_encoding(X, labels):
+        X = np.asarray(X)
+        y = np.asarray(labels)
+        for i, label in enumerate(labels):
+            if i < len(labels) - 1:
+                if label in move_to_id_dict:
+                    vec = embeddings[move_to_id_dict[label]]
+                    assert (vec == X[i + 1][i]).all()
+                else:
+                    print('unknown move {}'.format(labels[i]))
+                    
+    
+    def is_game_over_move(move):
+        return move in ('0-1', '1-0', '1/2-1/2')
+    
+    def encode_game(moves):
+        
+        encoded_X = []
+        labels = []
 
-def create_model(num_inputs, num_outputs, verbose=False, save_dir=None, hyper=None):
+        state = np.zeros((200, dimensions))
+        labels.append(moves.pop())
+        
+        if len(moves) > 199:
+            moves = moves[0:199]
+            print(len(moves))
+        
+        for i, move in enumerate(moves):
+            if move in move_to_id_dict:
+                vec = embeddings[move_to_id_dict[move]]
+            else:
+                # empty if unknown
+                vec = np.full(dimensions, 0.0)
+            state[i] = vec
+        
+        encoded_X.append(state)
+        s = np.copy(state)
+        
+        while len(moves) > 0:
+            labels.append(moves.pop())
+            s[len(moves) - 1] = np.zeros(dimensions
+                )
+            encoded_X.append(s)
+            s = np.copy(s)
+            
+        labels.reverse()
+        encoded_X.reverse()
+        # labels and encoded_X are now symetric,
+        # (i.e. each encoded_X is an encoding of
+        # the state of the board after the label),
+        # but what we really need is for encoded_X
+        # to describe the state of the board before
+        # the label. So we insert an empty board 
+        # state as the first element, and pop off
+        # the last.
+#         encoded_X.insert(0, np.zeros((200, d)))
+        encoded_X.pop(0)
+        
+        return encoded_X, labels
+    
+    def encode_moves(moves):
+        
+        encoded = []
+        labels_array = []
+        
+        # find indices of all last moves in a game
+        last_moves = [is_game_over_move(m) for m in moves]
+        last_moves = [i for i, t in enumerate(last_moves) if t]
+        
+        start = 0
+        i = 0
+        for last_move in last_moves:
+            game = moves[start:last_move + 1]
+            states, labels = encode_game(game)
+            labels.pop() # BUG, COME BACK AND FIX THIS
+            test_encoding(states, labels)
+            [encoded.append(s) for s in states]
+#             encoded.append(states)
+            [labels_array.append(l) for l in labels]
+            start = last_move + 1
+#             if i == 1000 - 1:
+#                 return encoded, labels #COME BACK HERE
+            i = i + 1
+        return encoded, labels_array
+    
+    # split: train, val/dev, test
+    with open(file, 'r') as f:
+        moves = f.read().split()
+        
+    train = moves[0:int(len(moves) * split[0])]
+    val = moves[len(train) + 1:len(train) + int(len(moves) * split[1])]
+    test = moves[len(train) + len(val) + 1:]
+
+    X_train, y_train = encode_moves(train[0:10000])
+    X_val, y_val     = encode_moves(val[0:1500])
+    X_test, y_test   = encode_moves(test[0:1000])
+    return np.asarray(X_train), y_train, np.asarray(X_val), y_val, np.asarray(X_test), y_test
+
+def create_model(num_inputs, 
+                 num_outputs, 
+                 verbose=False, 
+                 save_dir=None,
+                 hyper=None,
+                 load_from=None):
     
     callbacks = []
     if not hyper:
@@ -147,3 +273,17 @@ def create_model(num_inputs, num_outputs, verbose=False, save_dir=None, hyper=No
     
     model.compile(loss=hyper['loss'], optimizer=optimizer, metrics=hyper['metrics'])
     return model, callbacks
+## This is the older way I was parsing. Newer method in
+## load_data()
+# def move_to_glove(move, embeddings, word_to_id):
+#     if move in word_to_id:
+#         return embeddings[word_to_id[move]]
+#     else :
+#         # return the "I've never seen that" vector
+#         return np.full(len(embeddings[0]), 1, dtype=np.float32) 
+#
+# def encode_moves(moves, length):   
+#     encoded = [move_to_glove(m) for m in moves]
+#     while len(encoded) < length:
+#         encoded.append(np.zeros(length))
+#     return encoded
