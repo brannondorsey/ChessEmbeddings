@@ -1,6 +1,6 @@
-import codecs, json, os
+import codecs, json, os, glob
 import numpy as np
-from keras.models import Sequential
+from keras.models import Sequential, model_from_json
 from keras.layers import Dense, Dropout
 from keras.optimizers import Adam, SGD, RMSprop
 from keras.callbacks import ModelCheckpoint
@@ -27,16 +27,20 @@ def build_word_vector_matrix(vector_file, n_words=None):
     word_to_id = dict((v,k) for k,v in id_to_word.items())
     return embeddings, labels, id_to_word, word_to_id
 
-def plot_model_results(history, save_dir):
+def plot_model_results(history, save_dir=None):
     
     plt.rcParams["figure.figsize"] = (12, 8)
     
+    # fig = plt.figure(figuresize=(12, 8))
+
     plt.title('Accuracy')
     plt.xlabel('Epochs')
     plt.ylabel('Accuracy')
     plt.plot(history.history['acc'], label='acc')
     plt.plot(history.history['val_acc'], label='val_acc')
     plt.legend()
+    if save_dir:
+        plt.savefig(os.path.join(save_dir, 'accuracy.png'))
     plt.show()
     
     argmax = np.argmax(history.history['val_acc']) 
@@ -49,6 +53,8 @@ def plot_model_results(history, save_dir):
     plt.plot(history.history['loss'], label='loss')
     plt.plot(history.history['val_loss'], label='val_loss')
     plt.legend()
+    if save_dir:
+        plt.savefig(os.path.join(save_dir, 'loss.png'))
     plt.show()
     
     mess = 'Lowest val_loss at epoch {} with value of {:.2f}'
@@ -257,6 +263,39 @@ def create_model(num_inputs,
         print('optimizer:     {}'.format(hyper['optimizer']['type']))
         print('learning rate: {}'.format(hyper['optimizer']['lr']))
     
+    optimizer = get_optimizer(hyper)
+    
+    if verbose:
+        print('loss:    {}'.format(hyper['loss']))
+        print('metrics: {}'.format(*hyper['metrics']))
+    
+    model.compile(loss=hyper['loss'], optimizer=optimizer, metrics=hyper['metrics'])
+
+    if save_dir:
+        with open(os.path.join(save_dir, 'model.json'), 'w') as f:
+            f.write(model.to_json())
+
+    return model, callbacks
+
+def load_model_from_checkpoint(model_dir):
+    '''Loads the best performing model from checkpoint_dir'''
+    with open(os.path.join(model_dir, 'model.json'), 'r') as f:
+        model = model_from_json(f.read())
+
+    with open(os.path.join(model_dir, 'hyperparameters.json'), 'r') as f:
+        hyper = json.load(f)
+        optimizer = get_optimizer(hyper)
+
+    newest_checkpoint = max(glob.iglob(model_dir + '/checkpoints/*.hdf5'), 
+                            key=os.path.getctime)
+
+    if newest_checkpoint:
+        model.load_weights(newest_checkpoint)
+    model.compile(loss=hyper['loss'], optimizer=optimizer, metrics=hyper['metrics'])
+    return model
+
+
+def get_optimizer(hyper):
     optim = hyper['optimizer']['type']
     if optim == 'rmsprop':
         optimizer = RMSprop(lr=hyper['optimizer']['lr'])
@@ -266,13 +305,8 @@ def create_model(num_inputs,
         optimizer = Adam(lr=hyper['optimizer']['lr'])
     else:
         raise Exception('Unsupported optimization algorithm')
-    
-    if verbose:
-        print('loss:    {}'.format(hyper['loss']))
-        print('metrics: {}'.format(*hyper['metrics']))
-    
-    model.compile(loss=hyper['loss'], optimizer=optimizer, metrics=hyper['metrics'])
-    return model, callbacks
+    return optimizer
+
 ## This is the older way I was parsing. Newer method in
 ## load_data()
 # def move_to_glove(move, embeddings, word_to_id):
