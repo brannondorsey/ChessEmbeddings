@@ -1,10 +1,24 @@
-import codecs, json, os, glob
+import codecs, json, os, glob, pdb
 import numpy as np
 from keras.models import Sequential, model_from_json
 from keras.layers import Dense, Dropout
-from keras.optimizers import Adam, SGD, RMSprop
+from keras.optimizers import Adam, SGD, RMSprop, Adagrad
 from keras.callbacks import ModelCheckpoint
+from sklearn import preprocessing 
 import matplotlib.pyplot as plt
+
+def preprocess(X, y):
+    # shape = X.shape
+    # X = np.reshape(X, (shape[0], shape[1] * shape[2]))
+    # X = preprocessing.scale(X, axis=0)
+    # X = np.reshape(X, shape)
+
+    # rng_state = np.random.get_state()
+    # np.random.shuffle(X)
+    # np.random.set_state(rng_state)
+    # np.random.shuffle(y)
+
+    return X, y
 
 def build_word_vector_matrix(vector_file, n_words=None):
     '''Read a GloVe array from sys.argv[1] and return its vectors and labels as arrays
@@ -31,8 +45,6 @@ def plot_model_results(history, save_dir=None):
     
     plt.rcParams["figure.figsize"] = (12, 8)
     
-    # fig = plt.figure(figuresize=(12, 8))
-
     plt.title('Accuracy')
     plt.xlabel('Epochs')
     plt.ylabel('Accuracy')
@@ -61,6 +73,9 @@ def plot_model_results(history, save_dir=None):
     argmin = np.argmin(history.history['val_loss'])
     print(mess.format(argmin + 1, history.history['val_loss'][argmin]))
         
+def is_game_over_move(move):
+    return move in ('0-1', '1-0', '1/2-1/2')
+
 def load_data(file, 
               embeddings,
               move_to_id_dict,
@@ -78,19 +93,18 @@ def load_data(file,
                     assert (vec == X[i + 1][i]).all()
                 else:
                     print('unknown move {}'.format(labels[i]))
-                    
-    
-    def is_game_over_move(move):
-        return move in ('0-1', '1-0', '1/2-1/2')
     
     def encode_game(moves):
         
         encoded_X = []
         labels = []
-
         state = np.zeros((200, dimensions))
-        labels.append(moves.pop())
-        
+
+        # First move will have no board, so give it
+        # a zeros matrix
+        # labels.append(moves.pop(0))
+        # encoded_X.append(np.copy(state))
+
         if len(moves) > 199:
             moves = moves[0:199]
             print(len(moves))
@@ -103,18 +117,19 @@ def load_data(file,
                 vec = np.full(dimensions, 0.0)
             state[i] = vec
         
-        encoded_X.append(state)
+        # encoded_X.append(state)
         s = np.copy(state)
         
         while len(moves) > 0:
-            labels.append(moves.pop())
-            s[len(moves) - 1] = np.zeros(dimensions
-                )
+            labels.append(moves[0])
+            s[len(moves) - 1] = np.zeros(dimensions)
             encoded_X.append(s)
             s = np.copy(s)
+            moves.pop(0)
             
-        labels.reverse()
         encoded_X.reverse()
+
+        # pdb.set_trace()
         # labels and encoded_X are now symetric,
         # (i.e. each encoded_X is an encoding of
         # the state of the board after the label),
@@ -124,7 +139,7 @@ def load_data(file,
         # state as the first element, and pop off
         # the last.
 #         encoded_X.insert(0, np.zeros((200, d)))
-        encoded_X.pop(0)
+        # encoded_X.pop(0)
         
         return encoded_X, labels
     
@@ -138,19 +153,15 @@ def load_data(file,
         last_moves = [i for i, t in enumerate(last_moves) if t]
         
         start = 0
-        i = 0
         for last_move in last_moves:
             game = moves[start:last_move + 1]
+            # it is at least correct up to here...
             states, labels = encode_game(game)
-            labels.pop() # BUG, COME BACK AND FIX THIS
             test_encoding(states, labels)
             [encoded.append(s) for s in states]
-#             encoded.append(states)
             [labels_array.append(l) for l in labels]
             start = last_move + 1
-#             if i == 1000 - 1:
-#                 return encoded, labels #COME BACK HERE
-            i = i + 1
+
         return encoded, labels_array
     
     # split: train, val/dev, test
@@ -200,8 +211,7 @@ def create_model(num_inputs,
             }],
             'loss': 'categorical_crossentropy',
             'optimizer': {
-                'type': 'rmsprop',
-                'lr': 0.001
+                'type': 'adagrad',
             },
             'metrics': ['accuracy']
 
@@ -277,7 +287,7 @@ def create_model(num_inputs,
 
     return model, callbacks
 
-def load_model_from_checkpoint(model_dir):
+def load_model_from_checkpoint(model_dir, compile=True):
     '''Loads the best performing model from checkpoint_dir'''
     with open(os.path.join(model_dir, 'model.json'), 'r') as f:
         model = model_from_json(f.read())
@@ -291,7 +301,12 @@ def load_model_from_checkpoint(model_dir):
 
     if newest_checkpoint:
         model.load_weights(newest_checkpoint)
-    model.compile(loss=hyper['loss'], optimizer=optimizer, metrics=hyper['metrics'])
+
+    # If compile flag is true, use the compilation settings from the saved 
+    # hyperparameters
+    if compile:
+        model.compile(loss=hyper['loss'], optimizer=optimizer, metrics=hyper['metrics'])
+
     return model
 
 
@@ -303,6 +318,8 @@ def get_optimizer(hyper):
         optimizer = SGD(lr=hyper['optimizer']['lr'])
     elif optim == 'adam':
         optimizer = Adam(lr=hyper['optimizer']['lr'])
+    elif optim == 'adagrad':
+        optimizer = Adagrad()
     else:
         raise Exception('Unsupported optimization algorithm')
     return optimizer
