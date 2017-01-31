@@ -1,5 +1,9 @@
 __pycache__
 data/embeddings
 data/10_million_lines.pgn
+data/models
+ipython/scripts/data/models
+!ipython/scripts/data/models/notes/*
+ipython/scripts/tensorboard-logs
 build
 .ipynb_checkpoints
