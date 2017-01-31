@@ -324,6 +324,13 @@ def get_optimizer(hyper):
         raise Exception('Unsupported optimization algorithm')
     return optimizer
 
+def remove_all_but_newest_checkpoint(model_dir):
+    checkpoints = glob.glob(model_dir + '/checkpoints/*.hdf5')
+    newest_checkpoint = max(checkpoints, key=os.path.getctime)
+    checkpoints.remove(newest_checkpoint)
+    for checkpoint in checkpoints:
+        os.remove(checkpoint)
+        
 ## This is the older way I was parsing. Newer method in
 ## load_data()
 # def move_to_glove(move, embeddings, word_to_id):

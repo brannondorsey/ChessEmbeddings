@@ -79,9 +79,7 @@ def load_model_from_checkpoint(model_dir):
                             key=os.path.getctime)
 
     if newest_checkpoint: 
-       print(newest_checkpoint)
        epoch = int(newest_checkpoint[-22:-19])
-       print('PARSED EPOCH {}'.format(epoch))
        model.load_weights(newest_checkpoint)
 
     return model, epoch
@@ -98,11 +96,9 @@ def get_model(window_size, num_classes, vector_dimensions, model_dir=None):
         model = Sequential()
         model.add(LSTM(1024, return_sequences=True, 
                              batch_input_shape=(None, window_size, vector_dimensions)))
-        model.add(Activation('relu'))
-        model.add(Dropout(0.5))
+        model.add(Dropout(0.25))
         model.add(LSTM(512, return_sequences=False))
-        model.add(Activation('relu'))
-        model.add(Dropout(0.5))
+        model.add(Dropout(0.25))
         model.add(Dense(num_classes))
         model.add(Activation('softmax'))
     # load model from checkpoint
@@ -111,7 +107,7 @@ def get_model(window_size, num_classes, vector_dimensions, model_dir=None):
 
     model.compile(loss='categorical_crossentropy', 
                   optimizer=RMSprop(lr=0.001, decay=0.0005), 
-                  metrics=['accuracy'])
+                  metrics=['accuracy', 'fbeta_score', 'precision', 'recall'])
 
     return model, epoch
 
@@ -136,7 +132,7 @@ def get_callbacks(model_dir):
     #                                mode='auto'))
 
     callbacks.append(ReduceLROnPlateau(monitor='val_loss', 
-                                       factor=0.1, 
+                                       factor=0.5, 
                                        patience=3, 
                                        verbose=1, 
                                        mode='auto', 
@@ -144,10 +140,10 @@ def get_callbacks(model_dir):
                                        cooldown=0, 
                                        min_lr=0))
 
-    keras.callbacks.TensorBoard(log_dir='./tensorboard-logs', 
+    callbacks.append(TensorBoard(log_dir='./tensorboard-logs', 
                                 histogram_freq=0, 
                                 write_graph=True, 
-                                write_images=False)
+                                write_images=False))
 
     return callbacks
 
@@ -169,7 +165,7 @@ def main():
     print('{} unique moves in training set'.format(len(uniq_moves)))
 
     window_size = 20
-    model_num = 2
+    model_num = 18
     model_dir = 'data/models/{}'.format(model_num)
 
     # if the model dir doesn't exist
@@ -181,7 +177,8 @@ def main():
     # # create/load model
     model, epoch = get_model(window_size,  
                              num_classes=len(labels), 
-                             vector_dimensions=50)
+                             vector_dimensions=d,
+                             model_dir='data/models/{}'.format(17))
 
     print(model.summary())
 
@@ -192,31 +189,24 @@ def main():
     callbacks = get_callbacks(model_dir)
 
     # train data in batches so as not to have to load everything at once
-    batch_train = get_data_batch(train_moves, len(labels), window_size, batch_size=32)
-    batch_test  = get_data_batch(test_moves, len(labels), window_size, batch_size=32)
-
-    # for data in batch_train:
-    #     X, y = data
-    #     for i, x in enumerate(X):
-    #         print('X: ', *x)
-    #         print('y: ', y[i])
-    #         print()
-    #     print()
+    batch_train = get_data_batch(train_moves, len(labels), window_size, batch_size=256)
+    batch_test  = get_data_batch(test_moves, len(labels), window_size, batch_size=256)
 
     history = model.fit_generator(batch_train, 
                                   validation_data=batch_test,
-                                  nb_epoch=5,
-                                  samples_per_epoch=len(train_moves),
-                                  nb_val_samples=len(test_moves),
+                                  nb_epoch=25,
+                                  samples_per_epoch=len(train_moves)/10,
+                                  nb_val_samples=len(test_moves)/10,
                                   nb_worker=4,
                                   verbose=1,
                                   callbacks=callbacks)
     #                              initial_epoch=epoch,
 
-
+    # clean up lesser checkpoint files
     utils.plot_model_results(history, save_dir=model_dir)  
+    utils.remove_all_but_newest_checkpoint(model_dir)
 
-    predicted = model.predict_generator(batch_test, 32)
+    predicted = model.predict_generator(batch_test, 256)
     ids = [np.argmax(p) for p in predicted]
     moves = [id_to_move[i] for i in ids]
 
@@ -228,7 +218,7 @@ if __name__ == '__main__':
 
     # some globals, I know... gross
     # Load Vector Embeddings
-    d = 50 #dimensionality of word vectors
+    d = 200 #dimensionality of word vectors
     data = utils.build_word_vector_matrix('../../data/embeddings/5/vectors_d{}.txt'.format(d))
     embeddings, labels, id_to_move, move_to_id = data
 
