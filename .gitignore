@@ -1,5 +1,4 @@
 __pycache__
-data/embeddings
 data/10_million_lines.pgn
 data/models
 ipython/scripts/data/models
