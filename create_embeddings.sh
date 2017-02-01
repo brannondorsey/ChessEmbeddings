@@ -1,7 +1,7 @@
 #!/bin/bash
 
 WORD_FILE=data/train_moves.txt
-OUT_DIR=data/embeddings/5
+OUT_DIR=data/embeddings
 
 MIN_COUNT=5
 WINDOW_SIZE=15
@@ -10,16 +10,16 @@ ITERATIONS=200
 
 mkdir -p $OUT_DIR/
 
-build/vocab_count -min-count $MIN_COUNT -verbose 2 < $WORD_FILE > "$OUT_DIR/vocab.txt"
-build/cooccur -memory 4.0 -vocab-file "$OUT_DIR/vocab.txt" -verbose 2 -window-size $WINDOW_SIZE < $WORD_FILE > "$OUT_DIR/cooccurrence.bin"
-build/shuffle -memory 4.0 -verbose 2 < "$OUT_DIR/cooccurrence.bin" > "$OUT_DIR/cooccurrence.shuf.bin"
+GloVe/build/vocab_count -min-count $MIN_COUNT -verbose 2 < $WORD_FILE > "$OUT_DIR/vocab.txt"
+GloVe/build/cooccur -memory 4.0 -vocab-file "$OUT_DIR/vocab.txt" -verbose 2 -window-size $WINDOW_SIZE < $WORD_FILE > "$OUT_DIR/cooccurrence.bin"
+GloVe/build/shuffle -memory 4.0 -verbose 2 < "$OUT_DIR/cooccurrence.bin" > "$OUT_DIR/cooccurrence.shuf.bin"
 
 for D in "${DIMENSIONS[@]}"
 do
-	build/glove -save-file "$OUT_DIR/vectors_d$D" -threads 8 \
-				-input-file "$OUT_DIR/cooccurrence.shuf.bin" \
-				-x-max 10 -iter $ITERATIONS -vector-size $D \
-				-binary 2 -vocab-file "$OUT_DIR/vocab.txt" -verbose 2
+	GloVe/build/glove -save-file "$OUT_DIR/vectors_d$D" -threads 8 \
+					  -input-file "$OUT_DIR/cooccurrence.shuf.bin" \
+				      -x-max 10 -iter $ITERATIONS -vector-size $D \
+				      -binary 2 -vocab-file "$OUT_DIR/vocab.txt" -verbose 2
 done
 
 rm $OUT_DIR/cooccurrence.bin
