@@ -4,7 +4,7 @@ from keras.utils.np_utils import to_categorical
 from keras.models import Sequential, model_from_json
 from keras.layers import Dense, Dropout, Activation
 from keras.optimizers import RMSprop
-from keras.layers.recurrent import LSTM
+from keras.layers.recurrent import LSTM, GRU
 from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, TensorBoard
 
 # Add the parent directory to PYTHONPATH so that we can use utils.py
@@ -64,14 +64,37 @@ def get_data_batch(moves, num_classes, window_size, batch_size=32):
 
         yield X, y
         index = index + batch_size
-        # moves = moves[batch_size:]
+
+def eat_tail(model, start_moves, num_moves, num_classes, window_size):
+    '''
+    Predict moves, beginning with start_moves, where the previous
+    predictions made by the model are included in the sequence
+    fed to the model to create the next prediction.
+    
+    start_moves is a list of ASCII moves to use as the initial input
+    sequence. start_moves must be of length window_length.
+
+    Returns a list of ASCII moves of length num_moves
+    '''
+
+    sequence = start_moves
+    batch_gen = get_data_batch(sequence, num_classes, window_size, batch_size=1)
+    return_sequence = []
+    for i in range(0, num_moves):
+        X, y = next(batch_gen)
+        next_move = id_to_move[np.argmax(model.predict(X))]
+        sequence.pop(0)
+        sequence.append(next_move)
+        return_sequence.append(next_move)
+        batch_gen = get_data_batch(sequence, num_classes, window_size, batch_size=1)
+        # pdb.set_trace()
+    return return_sequence
 
 def load_model_from_checkpoint(model_dir):
 
     '''Loads the best performing model from checkpoint_dir'''
     with open(os.path.join(model_dir, 'model.json'), 'r') as f:
         model = model_from_json(f.read())
-
 
     epoch = 0
 
@@ -94,11 +117,11 @@ def get_model(window_size, num_classes, vector_dimensions, model_dir=None):
     # create new model
     if not model_dir:
         model = Sequential()
-        model.add(LSTM(1024, return_sequences=True, 
+        model.add(LSTM(4096, return_sequences=False, 
                              batch_input_shape=(None, window_size, vector_dimensions)))
         model.add(Dropout(0.25))
-        model.add(LSTM(512, return_sequences=False))
-        model.add(Dropout(0.25))
+        # model.add(LSTM(512, return_sequences=False))
+        # model.add(Dropout(0.25))
         model.add(Dense(num_classes))
         model.add(Activation('softmax'))
     # load model from checkpoint
@@ -147,7 +170,6 @@ def get_callbacks(model_dir):
 
     return callbacks
 
-
 def main():
     
     # Load move Dataset
@@ -155,7 +177,8 @@ def main():
         moves = f.read().split()
 
     # Only use a subset of moves, for now
-    train_moves = moves[:1000000]
+    train_moves = moves[:3000000]
+    # train_moves = moves
     n = len(train_moves)
     test_moves = moves[n:n + int(n * 0.15)]
 
@@ -165,8 +188,8 @@ def main():
     print('{} unique moves in training set'.format(len(uniq_moves)))
 
     window_size = 10
-    model_num = 22
-    model_dir = 'data/models/hyper/window_width/{}'.format(model_num)
+    model_num = 34
+    model_dir = 'data/models/long_running/{}'.format(model_num)
 
     # if the model dir doesn't exist
     # create it and checkpoints/
@@ -177,8 +200,8 @@ def main():
     # # create/load model
     model, epoch = get_model(window_size,  
                              num_classes=len(labels), 
-                             vector_dimensions=d)
-                             # model_dir='data/models/{}'.format(model_num))
+                             vector_dimensions=d,
+                             model_dir='data/models/long_running/{}'.format(28))
 
     print(model.summary())
 
@@ -194,13 +217,16 @@ def main():
 
     history = model.fit_generator(batch_train, 
                                   validation_data=batch_test,
-                                  nb_epoch=5,
-                                  samples_per_epoch=len(train_moves)/10,
-                                  nb_val_samples=len(test_moves)/10,
+                                  nb_epoch=30,
+                                  # samples_per_epoch=len(train_moves)/10,
+                                  # nb_val_samples=len(test_moves)/10,
+                                  samples_per_epoch=100000,
+                                  nb_val_samples=len(test_moves),
                                   nb_worker=4,
                                   verbose=1,
                                   callbacks=callbacks)
    #                              initial_epoch=epoch,
+
 
     #clean up lesser checkpoint files
     utils.plot_model_results(history, save_dir=model_dir)  
@@ -212,6 +238,18 @@ def main():
     # for i in range(0, len(moves), 2):
     #     if i < len(moves) - 1:
     #         print('{}. {} {}'.format(i+1, moves[i], moves[i + 1]))    
+
+
+    # length of moves sent as second parameter must be at least batch_size +
+    # window_size
+    # begin_game = 'e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 c3 O-O h3 Nb8 d4 Nbd7'.split()
+    # # end_game = 'Kf2 Bf5 Ra7 g6 Ra6+ Kc5 Ke1 Nf4 g3 Nxh3 Kd2 Kb5 Rd6 Kc5 Ra6 Nf2 g4 Bd3 Re6 1/2-1/2'.split()
+    # moves = eat_tail(model, begin_game, 20, len(labels), window_size)
+    # move_count = 1
+    # for i in range(0, len(moves), 2):
+    #     if i < len(moves) - 1:
+    #         print('{}. {} {}'.format(move_count, moves[i], moves[i + 1]))   
+    #         move_count = move_count + 1
 
     ## The generator can be itered over with...
     # for data in batch_load:

@@ -72,10 +72,16 @@ def plot_model_results(history, save_dir=None):
     mess = 'Lowest val_loss at epoch {} with value of {:.2f}'
     argmin = np.argmin(history.history['val_loss'])
     print(mess.format(argmin + 1, history.history['val_loss'][argmin]))
+
+    if 'fbeta_score' in history.history:
+        mess = 'Lowest val_loss at epoch {} with value of {:.2f}'
+        argmin = np.argmin(history.history['fbeta_score'])
+        print(mess.format(argmin + 1, history.history['fbeta_score'][argmin]))
         
 def is_game_over_move(move):
     return move in ('0-1', '1-0', '1/2-1/2')
 
+#WARNING: don't use this anymore as RNN is much better it seems
 def load_data(file, 
               embeddings,
               move_to_id_dict,
