@@ -164,9 +164,9 @@ def main():
     print('{} unique moves in vector encoding'.format(len(labels)))
     print('{} unique moves in training set'.format(len(uniq_moves)))
 
-    window_size = 20
-    model_num = 18
-    model_dir = 'data/models/{}'.format(model_num)
+    window_size = 10
+    model_num = 22
+    model_dir = 'data/models/hyper/window_width/{}'.format(model_num)
 
     # if the model dir doesn't exist
     # create it and checkpoints/
@@ -177,8 +177,8 @@ def main():
     # # create/load model
     model, epoch = get_model(window_size,  
                              num_classes=len(labels), 
-                             vector_dimensions=d,
-                             model_dir='data/models/{}'.format(17))
+                             vector_dimensions=d)
+                             # model_dir='data/models/{}'.format(model_num))
 
     print(model.summary())
 
@@ -194,21 +194,24 @@ def main():
 
     history = model.fit_generator(batch_train, 
                                   validation_data=batch_test,
-                                  nb_epoch=25,
+                                  nb_epoch=5,
                                   samples_per_epoch=len(train_moves)/10,
                                   nb_val_samples=len(test_moves)/10,
                                   nb_worker=4,
                                   verbose=1,
                                   callbacks=callbacks)
-    #                              initial_epoch=epoch,
+   #                              initial_epoch=epoch,
 
-    # clean up lesser checkpoint files
+    #clean up lesser checkpoint files
     utils.plot_model_results(history, save_dir=model_dir)  
     utils.remove_all_but_newest_checkpoint(model_dir)
 
-    predicted = model.predict_generator(batch_test, 256)
-    ids = [np.argmax(p) for p in predicted]
-    moves = [id_to_move[i] for i in ids]
+    # predicted = model.predict_generator(batch_test, 256)
+    # ids = [np.argmax(p) for p in predicted]
+    # moves = [id_to_move[i] for i in ids]
+    # for i in range(0, len(moves), 2):
+    #     if i < len(moves) - 1:
+    #         print('{}. {} {}'.format(i+1, moves[i], moves[i + 1]))    
 
     ## The generator can be itered over with...
     # for data in batch_load:
