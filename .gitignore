@@ -6,3 +6,4 @@ notebooks/scripts/data/models
 notebooks/scripts/tensorboard-logs
 build
 .ipynb_checkpoints
+venv/
