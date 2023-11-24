@@ -1,0 +1,4 @@
+matplotlib==3.8.2
+numpy==1.26.2
+pgnparser==1.0
+scipy==1.11.4
