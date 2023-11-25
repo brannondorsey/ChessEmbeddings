@@ -2,74 +2,19 @@
 # on its own w/out editing.
 # Rather comment/uncomment code and run
 # bits and pieces as needed per the task at hand.
-import os
-import pgn
-import codecs, pickle
-from typing import List
+
+"""
+Run this only after having run load_parse_and_pickle_games.py
+"""
+
+import pickle
 from itertools import chain
-from concurrent.futures import ProcessPoolExecutor
 
 
 # takes a 2d array of moves from each game
 # and flattens to 1d
 def flatten_moves(moves_2d):
     return list(chain.from_iterable(moves_2d))
-
-
-def split_pgn_contents_into_batches(file_contents: str, batches: int):
-    result_markers = ["\n1-0\n", "\n0-1\n", "\n1/2-1/2\n"]
-    game_starts = [0]  # List of indices where games start
-
-    # Find all game start positions
-    for marker in result_markers:
-        start = 0
-        while start < len(file_contents):
-            start = file_contents.find(marker, start)
-            if start == -1:
-                break
-            # Move to the end of this game result marker
-            start += len(marker)
-            if start < len(file_contents):
-                game_starts.append(start)
-
-    # Remove duplicate indices and sort
-    game_starts = sorted(set(game_starts))
-
-    # Split into batches
-    batches_list = []
-    batch_size = len(game_starts) // batches
-    for i in range(batches):
-        start_index = game_starts[i * batch_size]
-        end_index = game_starts[min((i + 1) * batch_size, len(game_starts)) - 1]
-        batches_list.append(file_contents[start_index:end_index])
-
-    return batches_list
-
-
-def parse_pgn_batch(pgn_batch):
-    print(f"parsing batch of {len(pgn_batch)} characters")
-    try:
-        games = pgn.loads(pgn_batch)
-    except AttributeError:
-        print("AttributeError")
-        return []
-    print(f"parsed {len(games)} games")
-    return games
-
-
-def load_parse_and_pickle_games(infile, outfile, num_workers=os.cpu_count() or 1):
-    games = None
-    with codecs.open(infile, encoding="ascii", errors="replace") as f:
-        pgn_batches = split_pgn_contents_into_batches(f.read(), num_workers)
-        for i, batch in enumerate(pgn_batches):
-            with open(f"/tmp/batch_{i}.pgn", "w") as f:
-                f.write(batch)
-        with ProcessPoolExecutor(max_workers=num_workers) as executor:
-            results = executor.map(parse_pgn_batch, pgn_batches)
-            games = list(chain.from_iterable(results))
-            print("Total games parsed:", len(games))
-    pickle.dump(games, open(outfile, "wb"))
-    return games
 
 
 def pickle_all_unique_tokens(games, outfile):
@@ -122,21 +67,34 @@ def print_game(game):
 # tokens = pickle_all_unique_tokens(games, 'data/tokens.pickle')
 
 ## load games
-# with open('data/10_million_lines.pickle', 'rb') as f:
-# 	games = pickle.load(f)
-# print('loaded {} games'.format(len(games)))
+with open("data/datasets/all.pickle", "rb") as f:
+    games = pickle.load(f)
+print("loaded {} games".format(len(games)))
 
-games = load_parse_and_pickle_games(
-    "data/100_million_lines.pgn", "data/100_million_lines.pickle"
-)
-
-# # ## parse and save all moves
-# moves = flatten_moves([g.moves for g in games])
-# print('found {} moves'.format(len(moves)))
-# text = ' '.join(moves)
-# with open('data/{}_moves.txt'.format(len(moves)), 'w') as f:
-# 	f.write(text)
-# 	print('wrote {} chars to file'.format(len(text)))
+with open("data/moves_from_{}_games.txt".format(len(games)), "w") as f:
+    for i, game in enumerate(games):
+        if not game:
+            print("No game at index {}".format(i))
+            continue
+        if i % 1000 == 0:
+            print("writing game {} of {}".format(i, len(games)))
+        try:
+            game.moves.remove("1-0")
+        except ValueError:
+            pass
+        try:
+            game.moves.remove("0-1")
+        except ValueError:
+            pass
+        try:
+            game.moves.remove("1/2-1/2")
+        except ValueError:
+            pass
+        # Add "start", "end", and chop of the result
+        moves = ["<start>"] + game.moves[0 : len(game.moves)] + ["<end>"]
+        text = " ".join(moves) + " "
+        f.write(text)
+    print("wrote all games to file")
 
 # train, test = load_and_split("data/14444236_moves.txt", 0.90)
 # print("train: {}, test: {}".format(len(train), len(test)))
