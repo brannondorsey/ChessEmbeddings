@@ -1,12 +1,14 @@
 #!/bin/bash
 
-WORD_FILE=data/train_moves.txt
+# Last run time: ./create_embeddings.sh  373374.72s user 1456.40s system 1148% cpu 9:04:07.97 total
+WORD_FILE=data/moves_from_3561458_games.txt
 OUT_DIR=data/embeddings
 
 MIN_COUNT=5
 WINDOW_SIZE=15
-DIMENSIONS=( 10 25 50 100 200 300 )
-ITERATIONS=200
+DIMENSIONS=( 8 10 16 25 32 50 64 100 128 200 256 300 512 )
+ITERATIONS=1000
+NUM_THREADS=12
 
 mkdir -p $OUT_DIR/
 
@@ -16,7 +18,7 @@ GloVe/build/shuffle -memory 4.0 -verbose 2 < "$OUT_DIR/cooccurrence.bin" > "$OUT
 
 for D in "${DIMENSIONS[@]}"
 do
-	GloVe/build/glove -save-file "$OUT_DIR/vectors_d$D" -threads 8 \
+	GloVe/build/glove -save-file "$OUT_DIR/vectors_d$D" -threads $NUM_THREADS \
 					  -input-file "$OUT_DIR/cooccurrence.shuf.bin" \
 				      -x-max 10 -iter $ITERATIONS -vector-size $D \
 				      -binary 2 -vocab-file "$OUT_DIR/vocab.txt" -verbose 2

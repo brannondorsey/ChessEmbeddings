@@ -7,3 +7,5 @@ notebooks/scripts/tensorboard-logs
 build
 .ipynb_checkpoints
 venv/
+# Too big for github
+data/embeddings/vectors_d512.bin
