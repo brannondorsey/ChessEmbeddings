@@ -1,8 +1,8 @@
 # Chess Embeddings
 
-Pre-trained [GloVe](git@github.com:stanfordnlp/GloVe.git) word embeddings of ~40MB chess moves. 
+Pre-trained [GloVe](git@github.com:stanfordnlp/GloVe.git) word embeddings created from ~3.5 million chess games from the [ChessDB dataset]([ChessDB dataset](https://chessdb.sourceforge.net/)).
 
-Current embeddings were trained on only a small subset of the ~3GB of data from [this dataset](http://chess-research-project.readthedocs.io/en/latest/). You can find these embeddings inside `data/embeddings/`. I've also provided scripts and instructions to easily create your own embeddings using more data from the above dataset if you prefer.
+Embeddings were trained on ~3GB of convenient PGN-formatted data made available via [this dataset](http://chess-research-project.readthedocs.io/en/latest/)(mirror download also available [here](https://brannondorsey.s3.amazonaws.com/ChessEmbeddings/all.pgn.zip)). You can find these embeddings inside `data/embeddings/`. I've also provided scripts and instructions to easily create your own embeddings using more data from the above dataset if you prefer.
 
 ## Creating Your Own Embeddings
 
