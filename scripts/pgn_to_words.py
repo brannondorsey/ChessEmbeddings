@@ -24,28 +24,6 @@ def save_train_test(train, test):
     with open("data/test_moves.txt", "w") as f:
         f.write("".join(test))
 
-
-def print_game(game):
-    print("annotator", game.annotator)
-    print("black", game.black)
-    print("date", game.date)
-    print("eco", game.eco)
-    print("event", game.event)
-    print("eventdate", game.eventdate)
-    print("fen", game.fen)
-    print("mode", game.mode)
-    print("moves", game.moves)
-    print("plycount", game.plycount)
-    print("result", game.result)
-    print("round", game.round)
-    print("site", game.site)
-    print("termination", game.termination)
-    print("time", game.time)
-    print("timecontrol", game.timecontrol)
-    print("white", game.white)
-    print("whiteelo", game.whiteelo)
-
-
 ## load games
 # with open("data/datasets/all.pickle", "rb") as f:
 #     games = pickle.load(f)

@@ -8,6 +8,7 @@
 * Created an optimized version of `load_parse_and_pickle()` which uses `multiprocessing` and a new[`TaskManager`](src/TaskManager.py) class that implements an efficient consumer/producer concurrency model. See [`scripts/load_parse_and_pickle.py`](scripts/load_parse_and_pickle_games.py) for details.
 * Add `requirements.txt` for reproducibility
 * Update GloVe submodule to latest `master`
+* Add `scripts/pgn_to_csv.py` to convert `all.pgn` to a CSV for easier parsing/manipulation in downstream tasks.
 
 ## 1.0
 
