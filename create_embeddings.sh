@@ -6,6 +6,7 @@ OUT_DIR=data/embeddings
 
 MIN_COUNT=5
 WINDOW_SIZE=15
+# Includes the original vector sizes from the GloVe paper + their power of two equivalents
 DIMENSIONS=( 8 10 16 25 32 50 64 100 128 200 256 300 512 )
 ITERATIONS=1000
 NUM_THREADS=12
