@@ -1,8 +1,16 @@
 # Chess Embeddings
 
-Pre-trained [GloVe](git@github.com:stanfordnlp/GloVe.git) word embeddings created from ~3.5 million chess games from the [ChessDB dataset]([ChessDB dataset](https://chessdb.sourceforge.net/)).
+Pre-trained [GloVe](git@github.com:stanfordnlp/GloVe.git) word embeddings created from ~3.5 million chess games from the [ChessDB dataset](https://chessdb.sourceforge.net/).
 
-Embeddings were trained on ~3GB of convenient PGN-formatted data made available via [this dataset](http://chess-research-project.readthedocs.io/en/latest/)(mirror download also available [here](https://brannondorsey.s3.amazonaws.com/ChessEmbeddings/all.pgn.zip)). You can find these embeddings inside `data/embeddings/`. I've also provided scripts and instructions to easily create your own embeddings using more data from the above dataset if you prefer.
+Embeddings were trained on ~3GB of convenient PGN-formatted data made available via [this dataset](http://chess-research-project.readthedocs.io/en/latest/) (mirror download also available [here](https://brannondorsey.s3.amazonaws.com/ChessEmbeddings/all.pgn.zip)). You can find these embeddings inside `data/embeddings/`. I've also provided scripts and instructions to easily create your own embeddings using more data from the above dataset if you prefer.
+
+## Downloads
+
+* [Pre-trained Chess embeddings](https://brannondorsey.s3.amazonaws.com/ChessEmbeddings/embeddings.zip) (215 MB)
+* [Text file used to train these embeddings](https://brannondorsey.s3.amazonaws.com/ChessEmbeddings/moves_from_3561458_games.zip) (374 MB)
+* [Original ChessDB PGN dataset](https://brannondorsey.s3.amazonaws.com/ChessEmbeddings/all.pgn.zip) (830 MB)
+* [Original ChessDB PGN dataset transformed to CSV format](https://brannondorsey.s3.amazonaws.com/ChessEmbeddings/all.csv.zip) (540 MB)
+* [Python pickle of all into a `pgnparser.PGNGame` array](https://brannondorsey.s3.amazonaws.com/ChessEmbeddings/all.pickle.zip) (requires ~32GB of RAM to load) (656 MB)
 
 ## Creating Your Own Embeddings
 
